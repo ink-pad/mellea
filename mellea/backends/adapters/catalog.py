@@ -40,9 +40,23 @@ class IntriniscsCatalogEntry(pydantic.BaseModel):
 
 _RAG_REPO = "ibm-granite/granite-lib-rag-r1.0"
 _CORE_REPO = "ibm-granite/rag-intrinsics-lib"
+_GUARDIAN_REPO = "ibm-granite/granitelib-guardian-r1.0"
 
 
 _INTRINSICS_CATALOG_ENTRIES = [
+    ############################################
+    # Guardian Intrinsics
+    ############################################
+    IntriniscsCatalogEntry(
+        name="factuality_detection", 
+        repo_id=_GUARDIAN_REPO, 
+        adapter_types=(AdapterType.LORA,)
+    ),
+    IntriniscsCatalogEntry(
+        name="factuality_correction", 
+        repo_id=_GUARDIAN_REPO, 
+        adapter_types=(AdapterType.LORA,)
+    ),
     ############################################
     # Core Intrinsics
     ############################################

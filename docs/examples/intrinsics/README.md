@@ -31,6 +31,12 @@ Detects when model outputs contain hallucinated information.
 ### query_rewrite.py
 Rewrites queries for better retrieval or understanding.
 
+### factuality_detection.py
+Detects if the assistant's response is factually correct relative to the given context.
+
+### factuality_correction.py
+Corrects a factually incorrect assistant's response with respect to the given context.
+
 ## Concepts Demonstrated
 
 - **Intrinsic Functions**: Specialized model capabilities beyond text generation
@@ -64,6 +70,8 @@ out, new_ctx = mfuncs.act(
 
 ## Available Intrinsics
 
+- **factuality_correction**: Correct a factually incorrect response
+- **factuality_detection**: Detect a factually incorrect response
 - **requirement_check**: Validate requirements (used by ALoraRequirement)
 - **answer_relevance**: Check answer-question relevance
 - **answerability**: Determine if question is answerable
