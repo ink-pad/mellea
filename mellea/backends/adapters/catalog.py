@@ -10,7 +10,12 @@ import pydantic
 
 
 class AdapterType(enum.Enum):
-    """Possible types of adapters for a backend."""
+    """Possible types of adapters for a backend.
+
+    Attributes:
+        LORA (str): Standard LoRA adapter; value ``"lora"``.
+        ALORA (str): Activated LoRA adapter; value ``"alora"``.
+    """
 
     LORA = "lora"
     ALORA = "alora"
@@ -20,6 +25,16 @@ class IntriniscsCatalogEntry(pydantic.BaseModel):
     """A single row in the main intrinsics catalog table.
 
     We use Pydantic for this dataclass because the rest of Mellea also uses Pydantic.
+
+    Attributes:
+        name (str): User-visible name of the intrinsic.
+        internal_name (str | None): Internal name used for adapter loading, or
+            ``None`` if the same as ``name``.
+        repo_id (str): HuggingFace repository where adapters for the intrinsic
+            are located.
+        adapter_types (tuple[AdapterType, ...]): Adapter types known to be
+            available for this intrinsic; defaults to
+            ``(AdapterType.LORA, AdapterType.ALORA)``.
     """
 
     name: str = pydantic.Field(description="User-visible name of the intrinsic.")
@@ -40,6 +55,7 @@ class IntriniscsCatalogEntry(pydantic.BaseModel):
 
 _RAG_REPO = "ibm-granite/granite-lib-rag-r1.0"
 _CORE_REPO = "ibm-granite/rag-intrinsics-lib"
+_GUARDIAN_REPO = "ibm-granite/granitelib-guardian-r1.0"
 
 
 _INTRINSICS_CATALOG_ENTRIES = [
@@ -65,6 +81,14 @@ _INTRINSICS_CATALOG_ENTRIES = [
         name="query_clarification", repo_id=_RAG_REPO, adapter_types=(AdapterType.LORA,)
     ),
     IntriniscsCatalogEntry(name="query_rewrite", repo_id=_RAG_REPO),
+    ############################################
+    # Guardian Intrinsics
+    ############################################
+    IntriniscsCatalogEntry(
+        name="guardian-core",
+        repo_id=_GUARDIAN_REPO,
+        adapter_types=(AdapterType.LORA,),
+    ),
 ]
 
 _INTRINSICS_CATALOG = {e.name: e for e in _INTRINSICS_CATALOG_ENTRIES}
@@ -74,16 +98,26 @@ Mellea code should access this catalog via :func:`fetch_intrinsic_metadata()`"""
 
 
 def known_intrinsic_names() -> list[str]:
-    """:returns: List of all known user-visible names for intrinsics."""
+    """Return all known user-visible names for intrinsics.
+
+    Returns:
+        List of all known user-visible intrinsic names.
+    """
     return list(_INTRINSICS_CATALOG.keys())
 
 
 def fetch_intrinsic_metadata(intrinsic_name: str) -> IntriniscsCatalogEntry:
     """Retrieve information about the adapter that backs an intrinsic.
 
-    :param intrinsic_name: User-visible name of the intrinsic
+    Args:
+        intrinsic_name (str): User-visible name of the intrinsic.
 
-    :returns: Metadata about the adapter(s) that implement the intrinsic.
+    Returns:
+        IntriniscsCatalogEntry: Metadata about the adapter(s) that implement the
+            intrinsic.
+
+    Raises:
+        ValueError: If ``intrinsic_name`` is not a known intrinsic name.
     """
     if intrinsic_name not in _INTRINSICS_CATALOG:
         raise ValueError(
