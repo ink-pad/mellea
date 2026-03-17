@@ -55,6 +55,7 @@ class IntriniscsCatalogEntry(pydantic.BaseModel):
 
 _RAG_REPO = "ibm-granite/granite-lib-rag-r1.0"
 _CORE_REPO = "ibm-granite/rag-intrinsics-lib"
+_GUARDIAN_REPO = "ibm-granite/granitelib-guardian-r1.0"
 
 
 _INTRINSICS_CATALOG_ENTRIES = [
@@ -80,6 +81,14 @@ _INTRINSICS_CATALOG_ENTRIES = [
         name="query_clarification", repo_id=_RAG_REPO, adapter_types=(AdapterType.LORA,)
     ),
     IntriniscsCatalogEntry(name="query_rewrite", repo_id=_RAG_REPO),
+    ############################################
+    # Guardian Intrinsics
+    ############################################
+    IntriniscsCatalogEntry(
+        name="guardian-core",
+        repo_id=_GUARDIAN_REPO,
+        adapter_types=(AdapterType.LORA,),
+    ),
 ]
 
 _INTRINSICS_CATALOG = {e.name: e for e in _INTRINSICS_CATALOG_ENTRIES}

@@ -31,6 +31,9 @@ Detects when model outputs contain hallucinated information.
 ### query_rewrite.py
 Rewrites queries for better retrieval or understanding.
 
+### guardian_core.py
+Uses the guardian-core LoRA adapter for safety risk detection, including prompt-level harm, response-level social bias, RAG groundedness, and custom criteria.
+
 ## Concepts Demonstrated
 
 - **Intrinsic Functions**: Specialized model capabilities beyond text generation
@@ -71,6 +74,7 @@ out, new_ctx = mfuncs.act(
 - **context_relevance**: Assess context-query relevance
 - **hallucination_detection**: Detect hallucinated content
 - **query_rewrite**: Improve query formulation
+- **guardian-core**: Safety risk detection (harm, bias, groundedness, custom criteria)
 
 ## Related Documentation
 
