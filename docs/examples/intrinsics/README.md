@@ -37,6 +37,9 @@ Estimates the model's certainty about answering a question.
 ### requirement_check.py
 Detect if text adheres to provided requirements.
 
+### policy_guardrails.py
+Checks if a scenario is compliant/non-compliant/ambiguous with respect to a given policy,
+
 ## Concepts Demonstrated
 
 - **Intrinsic Functions**: Specialized model capabilities beyond text generation
@@ -78,6 +81,7 @@ out, new_ctx = mfuncs.act(
 - **hallucination_detection**: Detect hallucinated content
 - **query_rewrite**: Improve query formulation
 - **uncertainty**: Estimate certainty about answering a question
+- **policy_guardrails**: Determine if scenario complies with policy
 
 ## Related Documentation
 
