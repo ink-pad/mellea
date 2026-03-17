@@ -88,12 +88,22 @@ _INTRINSICS_CATALOG_ENTRIES = [
     # Guardian Intrinsics
     ############################################
     IntriniscsCatalogEntry(
-        name="policy_guardrails",
+        name="policy-guardrails",
         repo_id=_GUARDIAN_REPO,
         adapter_types=(AdapterType.LORA,),
     ),
     IntriniscsCatalogEntry(
         name="guardian-core",
+        repo_id=_GUARDIAN_REPO,
+        adapter_types=(AdapterType.LORA,),
+    ),
+    IntriniscsCatalogEntry(
+        name="factuality-detection",
+        repo_id=_GUARDIAN_REPO,
+        adapter_types=(AdapterType.LORA,),
+    ),
+    IntriniscsCatalogEntry(
+        name="factuality-correction",
         repo_id=_GUARDIAN_REPO,
         adapter_types=(AdapterType.LORA,),
     ),

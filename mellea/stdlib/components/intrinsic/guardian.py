@@ -36,7 +36,7 @@ def policy_guardrails(context: ChatContext, backend: AdapterMixin, policy_text: 
     judge_protocol = f"<guardian> {system_prompt}\n\n### Criteria: {judge_criteria}\n\n### Scoring Schema: {scoring_schema}"
 
     context = context.add(Message("user", judge_protocol))
-    result_json = call_intrinsic("policy_guardrails", context, backend)
+    result_json = call_intrinsic("policy-guardrails", context, backend)
     return result_json["label"]
 
 
@@ -245,7 +245,7 @@ def factuality_detection(context: ChatContext, backend: AdapterMixin) -> float:
 """
 
     context = context.add(Message("user", detector_message))
-    result_json = call_intrinsic("factuality_detection", context, backend)
+    result_json = call_intrinsic("factuality-detection", context, backend)
     return result_json["score"]
 
 
@@ -271,5 +271,5 @@ def factuality_correction(context: ChatContext, backend: AdapterMixin) -> float:
 """
 
     context = context.add(Message("user", corrector_message))
-    result_json = call_intrinsic("factuality_correction", context, backend)
+    result_json = call_intrinsic("factuality-correction", context, backend)
     return result_json["correction"]
