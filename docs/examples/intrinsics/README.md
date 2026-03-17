@@ -43,6 +43,12 @@ Checks if a scenario is compliant/non-compliant/ambiguous with respect to a give
 ### guardian_core.py
 Uses the guardian-core LoRA adapter for safety risk detection, including prompt-level harm, response-level social bias, RAG groundedness, and custom criteria.
 
+### factuality_detection.py
+Detects if the the model's output is factually incorrect relative to context.
+
+### factuality_correction.py
+Corrects a factually incorrect response relative to context.
+
 ## Concepts Demonstrated
 
 - **Intrinsic Functions**: Specialized model capabilities beyond text generation
@@ -86,6 +92,8 @@ out, new_ctx = mfuncs.act(
 - **uncertainty**: Estimate certainty about answering a question
 - **policy_guardrails**: Determine if scenario complies with policy
 - **guardian-core**: Safety risk detection (harm, bias, groundedness, custom criteria)
+- **factuality_detection**: Detect factually incorrect responses
+- **factuality_correction**: Correct factually incorrect responses
 
 ## Related Documentation
 
