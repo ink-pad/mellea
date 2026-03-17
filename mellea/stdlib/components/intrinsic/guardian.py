@@ -28,7 +28,7 @@ def policy_guardrails(context: ChatContext, backend: AdapterMixin, policy_text: 
     judge_protocol = f"<guardian> {system_prompt}\n\n### Criteria: {judge_criteria}\n\n### Scoring Schema: {scoring_schema}"
 
     context = context.add(Message("user", judge_protocol))
-    result_json = _call_intrinsic("policy_guardrails", context, backend)
+    result_json = call_intrinsic("policy_guardrails", context, backend)
     return result_json["label"]
 
 
