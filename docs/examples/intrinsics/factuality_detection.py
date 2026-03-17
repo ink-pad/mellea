@@ -10,8 +10,8 @@ uv run python docs/examples/intrinsics/factuality_detection.py
 
 from mellea.backends.huggingface import LocalHFBackend
 from mellea.stdlib.components import Document, Message
-from mellea.stdlib.context import ChatContext
 from mellea.stdlib.components.intrinsic import guardian
+from mellea.stdlib.context import ChatContext
 
 user_text = "Is Ozzy Osbourne still alive?"
 response_text = "Yes, Ozzy Osbourne is alive in 2025 and preparing for another world tour, continuing to amaze fans with his energy and resilience."
@@ -34,4 +34,4 @@ context = (
 )
 
 result = guardian.factuality_detection(context, backend)
-print(f"Result of factuality detection: {result}") # string "yes" or "no"
+print(f"Result of factuality detection: {result}")  # string "yes" or "no"

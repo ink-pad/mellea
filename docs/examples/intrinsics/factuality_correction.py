@@ -10,8 +10,8 @@ uv run python docs/examples/intrinsics/factuality_correction.py
 
 from mellea.backends.huggingface import LocalHFBackend
 from mellea.stdlib.components import Document, Message
-from mellea.stdlib.context import ChatContext
 from mellea.stdlib.components.intrinsic import guardian
+from mellea.stdlib.context import ChatContext
 
 user_text = "Is Ozzy Osbourne still alive?"
 response_text = "Yes, Ozzy Osbourne is alive in 2025 and preparing for another world tour, continuing to amaze fans with his energy and resilience."
@@ -42,4 +42,4 @@ context = (
 )
 
 result = guardian.factuality_correction(context, backend)
-print(f"Result of factuality correction: {result}") # corrected response string
+print(f"Result of factuality correction: {result}")  # corrected response string

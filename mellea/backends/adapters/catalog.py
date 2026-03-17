@@ -93,9 +93,7 @@ _INTRINSICS_CATALOG_ENTRIES = [
         adapter_types=(AdapterType.LORA,),
     ),
     IntriniscsCatalogEntry(
-        name="guardian-core",
-        repo_id=_GUARDIAN_REPO,
-        adapter_types=(AdapterType.LORA,),
+        name="guardian-core", repo_id=_GUARDIAN_REPO, adapter_types=(AdapterType.LORA,)
     ),
     IntriniscsCatalogEntry(
         name="factuality-detection",

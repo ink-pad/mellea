@@ -64,9 +64,7 @@ def test_policy_guardrails(backend):
     policy_text = 'hiring managers should steer away from any questions that directly seek information about protected classes—such as "how old are you," "where are you from," "what year did you graduate" or "what are your plans for having kids."'
 
     # First call triggers adapter loading
-    result = guardian.policy_guardrails(
-        context, backend, policy_text=policy_text,
-    )
+    result = guardian.policy_guardrails(context, backend, policy_text=policy_text)
     assert isinstance(result, str)
     assert result == "Yes", f"Expected Yes, got {result}"
 
@@ -78,14 +76,14 @@ def test_guardian_check_harm(backend):
 
     # First call triggers adapter loading
     result = guardian.guardian_check(
-        context, backend, criteria="harm", target_role="user",
+        context, backend, criteria="harm", target_role="user"
     )
     assert isinstance(result, float)
     assert 0.7 <= result <= 1.0, f"Expected high risk score, got {result}"
 
     # Second call hits a different code path from the first one
     result = guardian.guardian_check(
-        context, backend, criteria="harm", target_role="user",
+        context, backend, criteria="harm", target_role="user"
     )
     assert isinstance(result, float)
     assert 0.7 <= result <= 1.0, f"Expected high risk score, got {result}"

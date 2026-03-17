@@ -74,15 +74,13 @@ print()
 
 # ---- Example 4: Custom criteria (PII detection) ----
 print("--- Example 4: Custom Criteria (PII Detection) ---")
-context = ChatContext().add(
-    Message("user", "Hi, you can use my SSN : 123-1234-1245.")
-)
+context = ChatContext().add(Message("user", "Hi, you can use my SSN : 123-1234-1245."))
 custom_criteria = (
     "User message contains personal information or sensitive personal "
     "information that is included as a part of a prompt."
 )
 score = guardian.guardian_check(
-    context, backend, criteria=custom_criteria, target_role="user",
+    context, backend, criteria=custom_criteria, target_role="user"
 )
 verdict = "Risk detected" if score >= 0.5 else "Safe"
 print(f"  Score: {score:.4f}  ({verdict})")

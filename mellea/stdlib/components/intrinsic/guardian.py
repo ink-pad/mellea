@@ -13,11 +13,13 @@ from ....backends.adapters import AdapterMixin, AdapterType, IntrinsicAdapter
 from ....stdlib import functional as mfuncs
 from ...context import ChatContext
 from ..chat import Message
-from .intrinsic import Intrinsic
 from ._util import call_intrinsic
+from .intrinsic import Intrinsic
 
 
-def policy_guardrails(context: ChatContext, backend: AdapterMixin, policy_text: str) -> str:
+def policy_guardrails(
+    context: ChatContext, backend: AdapterMixin, policy_text: str
+) -> str:
     """Checks whether text complied with specified policy.
 
     Uses the policy_guardrails LoRA adapter to judge whether the scenario
@@ -31,7 +33,7 @@ def policy_guardrails(context: ChatContext, backend: AdapterMixin, policy_text: 
     judge_criteria = "Policy: " + policy_text
     system_prompt = "You are a compliance agent trying to help determine whether a scenario is compliant with a given policy."
 
-    scoring_schema = 'Does the scenario described in the previous message comply with the policy? Compliance is determined based on the following guidelines:\n<start_of_guidelines>:\n- \"Yes\"  if, given the scenario and the policy, it can be decided with certainty that the scenario complies with the policy\n- \"No\"  if, given the scenario and the policy, it can be decided with certainty that the scenario does not comply with the policy\n- \"Ambiguous\" if, given the scenario and the policy, it is not possible to decide whether the scenario complies with, or violates, the policy and more information is needed to decide with certainty.\n<end_of_guidelines>\n\nYour answer must be either "Yes", "No", or "Ambiguous". You MUST return your answer as a valid JSON object with the key "label". For example, if your answer is "Yes", respond as "{"label":"Yes"}".'
+    scoring_schema = 'Does the scenario described in the previous message comply with the policy? Compliance is determined based on the following guidelines:\n<start_of_guidelines>:\n- "Yes"  if, given the scenario and the policy, it can be decided with certainty that the scenario complies with the policy\n- "No"  if, given the scenario and the policy, it can be decided with certainty that the scenario does not comply with the policy\n- "Ambiguous" if, given the scenario and the policy, it is not possible to decide whether the scenario complies with, or violates, the policy and more information is needed to decide with certainty.\n<end_of_guidelines>\n\nYour answer must be either "Yes", "No", or "Ambiguous". You MUST return your answer as a valid JSON object with the key "label". For example, if your answer is "Yes", respond as "{"label":"Yes"}".'
 
     judge_protocol = f"<guardian> {system_prompt}\n\n### Criteria: {judge_criteria}\n\n### Scoring Schema: {scoring_schema}"
 
@@ -137,11 +139,7 @@ _IO_CONFIG = {
             "categories_to_values": {"yes": 1.0, "no": 0.0},
             "input_path": [],
         },
-        {
-            "type": "nest",
-            "input_path": [],
-            "field_name": "guardian",
-        },
+        {"type": "nest", "input_path": [], "field_name": "guardian"},
     ],
     "instruction": None,
     "parameters": {"max_completion_tokens": 15},
@@ -161,7 +159,7 @@ def _call_guardian_intrinsic(context: ChatContext, backend: AdapterMixin) -> dic
     if base_model_name is None:
         raise ValueError("Backend has no model ID")
     adapter = IntrinsicAdapter(
-        _INTRINSIC_NAME, adapter_type=AdapterType.LORA, config_dict=_IO_CONFIG,
+        _INTRINSIC_NAME, adapter_type=AdapterType.LORA, config_dict=_IO_CONFIG
     )
     if adapter.qualified_name not in backend.list_adapters():
         backend.add_adapter(adapter)
@@ -235,7 +233,6 @@ def factuality_detection(context: ChatContext, backend: AdapterMixin) -> float:
 
     :return: Factuality score as a "yes/no" label (yes = factually incorrect).
     """
-
     detector_message = """
 <guardian>As a judge agent, your role is to help assess whether the provided text meets the given judging criteria, utilizing all available information, including conversations, documents, and tools.
 
@@ -250,18 +247,16 @@ def factuality_detection(context: ChatContext, backend: AdapterMixin) -> float:
 
 
 def factuality_correction(context: ChatContext, backend: AdapterMixin) -> float:
-    """Corrects the last response so that it is factually correct relative
-    to the given contextual information.
+    """Corrects the last response so that it is factually correct.
 
     Intrinsic function that corrects the assistant's response to a user's
-    question relative to the given context.
+    question relative to the given contextual information.
 
     :param context: Chat context containing user question and assistant answer.
     :param backend: Backend instance that supports LoRA/aLoRA adapters.
 
     :return: Correct assistant response.
     """
-
     corrector_message = """
 <guardian>As a judge agent, your role is to help assess whether the provided text meets the given judging criteria, utilizing all available information, including conversations, documents, and tools.
 
