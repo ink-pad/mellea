@@ -6,15 +6,10 @@ differs from other intrinsics, which rely on the ``instruction`` field in
 ``io.yaml``.
 """
 
-import json
-
-from ....backends import ModelOption
-from ....backends.adapters import AdapterMixin, AdapterType, IntrinsicAdapter
-from ....stdlib import functional as mfuncs
+from ....backends.adapters import AdapterMixin
 from ...context import ChatContext
 from ..chat import Message
 from ._util import call_intrinsic
-from .intrinsic import Intrinsic
 
 
 def policy_guardrails(
@@ -124,64 +119,6 @@ Keys can be passed directly to :func:`guardian_check` as the ``criteria``
 parameter.
 """
 
-_INTRINSIC_NAME = "guardian-core"
-
-# The io.yaml shipped in the HF repo uses an object response_format with
-# input_path: [] on the likelihood rule, which doesn't work (the root is a
-# dict, not a scalar).  We override the config here so that the response_format
-# is a bare string enum and input_path: [] targets the scalar correctly.
-_IO_CONFIG = {
-    "model": None,
-    "response_format": '{"type": "string", "enum": ["yes", "no"]}',
-    "transformations": [
-        {
-            "type": "likelihood",
-            "categories_to_values": {"yes": 1.0, "no": 0.0},
-            "input_path": [],
-        },
-        {"type": "nest", "input_path": [], "field_name": "guardian"},
-    ],
-    "instruction": None,
-    "parameters": {"max_completion_tokens": 15},
-    "sentence_boundaries": None,
-}
-
-
-def _call_guardian_intrinsic(context: ChatContext, backend: AdapterMixin) -> dict:
-    """Shared code for invoking the guardian-core intrinsic.
-
-    Reuses the same adapter-check / act() pattern as
-    :func:`~mellea.stdlib.components.intrinsic.rag._call_intrinsic`.
-
-    :returns: Result of the call in JSON format.
-    """
-    base_model_name = backend.base_model_name
-    if base_model_name is None:
-        raise ValueError("Backend has no model ID")
-    adapter = IntrinsicAdapter(
-        _INTRINSIC_NAME, adapter_type=AdapterType.LORA, config_dict=_IO_CONFIG
-    )
-    if adapter.qualified_name not in backend.list_adapters():
-        backend.add_adapter(adapter)
-
-    intrinsic = Intrinsic(_INTRINSIC_NAME)
-
-    model_output_thunk, _ = mfuncs.act(
-        intrinsic,
-        context,
-        backend,
-        model_options={ModelOption.TEMPERATURE: 0.0},
-        strategy=None,
-    )
-
-    assert model_output_thunk.is_computed()
-
-    result_str = model_output_thunk.value
-    if result_str is None:
-        raise ValueError("Model output is None.")
-    return json.loads(result_str)
-
-
 def guardian_check(
     context: ChatContext,
     backend: AdapterMixin,
@@ -217,8 +154,8 @@ def guardian_check(
         f"### Scoring Schema: {scoring}"
     )
     context = context.add(Message("user", judge_protocol))
-    result_json = _call_guardian_intrinsic(context, backend)
-    return result_json["guardian"]
+    result_json = call_intrinsic("guardian-core", context, backend)
+    return result_json["guardian"]["score"]
 
 
 def factuality_detection(context: ChatContext, backend: AdapterMixin) -> float:
