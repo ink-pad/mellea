@@ -31,7 +31,9 @@ _EVALUATION_PROMPT = (
 )
 
 
-def requirement_check(context: ChatContext, backend: AdapterMixin, requirement: str) -> float:
+def requirement_check(
+    context: ChatContext, backend: AdapterMixin, requirement: str
+) -> float:
     """Detect if text adheres to provided requirements.
 
     Intrinsic function that determines if the text satisfies the given
