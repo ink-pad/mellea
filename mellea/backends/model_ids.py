@@ -1,4 +1,11 @@
-"""Dataclasses for ModelIdentifiers."""
+"""``ModelIdentifier`` dataclass and a catalog of pre-defined model IDs.
+
+``ModelIdentifier`` is a frozen dataclass that groups the platform-specific name
+variants for a model (HuggingFace, Ollama, WatsonX, MLX, OpenAI, Bedrock) so that
+a single constant can be passed to any backend without manual string translation.
+The module also ships a curated catalog of ready-to-use constants for popular
+open-weight models including IBM Granite 4, Meta Llama 4, Mistral, and Qwen families.
+"""
 
 import dataclasses
 
@@ -10,6 +17,16 @@ class ModelIdentifier:
     Using model strings is messy:
         1. Different platforms use variations on model id strings.
         2. Using raw strings is annoying because: no autocomplete, typos, hallucinated names, mismatched model and tokenizer names, etc.
+
+    Args:
+        hf_model_name (str | None): HuggingFace Hub model repository ID (e.g. ``"ibm-granite/granite-3.3-8b-instruct"``).
+        ollama_name (str | None): Ollama model tag (e.g. ``"granite3.3:8b"``).
+        watsonx_name (str | None): WatsonX AI model ID (e.g. ``"ibm/granite-3-2b-instruct"``).
+        mlx_name (str | None): MLX model identifier for Apple Silicon inference.
+        openai_name (str | None): OpenAI API model name (e.g. ``"gpt-5.1"``).
+        bedrock_name (str | None): AWS Bedrock model ID (e.g. ``"openai.gpt-oss-20b"``).
+        hf_tokenizer_name (str | None): HuggingFace tokenizer ID; defaults to ``hf_model_name`` if ``None``.
+
     """
 
     hf_model_name: str | None = None
@@ -45,6 +62,18 @@ IBM_GRANITE_4_HYBRID_SMALL = ModelIdentifier(
     watsonx_name="ibm/granite-4-h-small",
 )
 
+IBM_GRANITE_4_HYBRID_1B = ModelIdentifier(
+    hf_model_name="ibm-granite/granite-4.0-h-1b",
+    ollama_name="granite4:1b-h",
+    watsonx_name=None,
+)
+
+IBM_GRANITE_4_HYBRID_350m = ModelIdentifier(
+    hf_model_name="ibm-granite/granite-4.0-h-350m",
+    ollama_name="granite4:350m-h",
+    watsonx_name=None,
+)
+
 
 # Deprecated Granite 3 models - kept for backward compatibility
 # These maintain their original model references (not upgraded to Granite 4)
@@ -65,9 +94,9 @@ IBM_GRANITE_3_3_8B = ModelIdentifier(
 # - Ollama/HF: Uses MICRO (fits in CI memory constraints)
 # - Watsonx: Uses SMALL (required for watsonx support)
 IBM_GRANITE_4_MICRO_3B = ModelIdentifier(
-    hf_model_name="ibm-granite/granite-4.0-h-micro",
-    ollama_name="granite4:micro-h",
-    watsonx_name="ibm/granite-4-h-small",
+    hf_model_name="ibm-granite/granite-4.0-micro",
+    ollama_name="granite4:micro",
+    watsonx_name="ibm/granite-4-h-small",  # Keeping hybrid version here for backwards compatibility.
 )
 
 # Granite 3.3 Vision Model (2B)

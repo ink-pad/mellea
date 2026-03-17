@@ -58,14 +58,13 @@ to melleaadmin@ibm.com.
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 
-3. **Install with all dependencies:**
+3. **Install dependencies:**
    ```bash
+   # Install all dependencies (recommended for development)
    uv sync --all-extras --all-groups
-   ```
-
-   Or for minimal development setup:
-   ```bash
-   uv pip install -e ".[all]" --group dev --group notebook --group docs
+   
+   # Or install just the backend dependencies
+   uv sync --extra backends --all-groups
    ```
 
 4. **Install pre-commit hooks (Required):**
@@ -133,20 +132,76 @@ Use **[Google-style docstrings](https://google.github.io/styleguide/pyguide.html
 ```python
 def extract_entities(text: str, entity_types: list[str]) -> dict[str, list[str]]:
     """Extract named entities from text.
-    
+
     Args:
         text: The input text to analyze.
         entity_types: List of entity types to extract (e.g., ["PERSON", "ORG"]).
-    
+
     Returns:
         Dictionary mapping entity types to lists of extracted entities.
-    
+
     Example:
         >>> extract_entities("Alice works at IBM", ["PERSON", "ORG"])
         {"PERSON": ["Alice"], "ORG": ["IBM"]}
     """
     ...
 ```
+
+#### Class and `__init__` docstrings
+
+Place `Args:` on the **class docstring only**. The `__init__` docstring should be a
+single summary sentence with no `Args:` section. This keeps hover docs clean in IDEs
+and ensures the docs pipeline (which skips `__init__`) publishes the full parameter
+list.
+
+```python
+class MyComponent(Component[str]):
+    """A component that does something useful.
+
+    Args:
+        name (str): Human-readable label for this component.
+        max_tokens (int): Upper bound on generated tokens.
+    """
+
+    def __init__(self, name: str, max_tokens: int = 256) -> None:
+        """Initialize MyComponent with a name and token budget."""
+        self.name = name
+        self.max_tokens = max_tokens
+```
+
+Add an `Attributes:` section on the class docstring **only** when a stored attribute
+differs in type or behaviour from the constructor input — for example, when a `str`
+argument is wrapped into a `CBlock`, or when a class-level constant is relevant to
+callers. Pure-echo entries that repeat `Args:` verbatim should be omitted.
+
+#### Validating docstrings
+
+Run the coverage and quality audit to check your changes before committing:
+
+```bash
+# Build fresh API docs then audit quality (documented symbols only)
+uv run python tooling/docs-autogen/generate-ast.py
+uv run python tooling/docs-autogen/audit_coverage.py \
+    --quality --no-methods --docs-dir docs/docs/api
+```
+
+Key checks the audit enforces:
+
+| Check | Meaning |
+|-------|---------|
+| `no_class_args` | Class has typed `__init__` params but no `Args:` on the class docstring |
+| `duplicate_init_args` | `Args:` appears in both the class and `__init__` docstrings (Option C violation) |
+| `no_args` | Standalone function has params but no `Args:` section |
+| `no_returns` | Function has a non-trivial return annotation but no `Returns:` section |
+| `param_mismatch` | `Args:` documents names not present in the actual signature |
+
+**IDE hover verification** — open any of these existing classes in VS Code and hover
+over the class name or a constructor call to confirm the hover card shows `Args:` once
+with no duplication:
+
+- `ReactInitiator` ([mellea/stdlib/components/react.py](mellea/stdlib/components/react.py)) — `Args:` + `Attributes:` (`goal: str → CBlock` transform)
+- `BaseSamplingStrategy` ([mellea/stdlib/sampling/base.py](mellea/stdlib/sampling/base.py)) — `Args:` only, no `Attributes:` (pure-echo removed)
+- `TokenToFloat` ([mellea/formatters/granite/intrinsics/output.py](mellea/formatters/granite/intrinsics/output.py)) — `Attributes:` for `YAML_NAME` class constant
 
 ### Code Style
 
@@ -294,6 +349,9 @@ Tests are categorized using pytest markers:
 - `@pytest.mark.llm` - Makes LLM calls (needs at least Ollama)
 - `@pytest.mark.slow` - Tests taking >5 minutes (skipped via `SKIP_SLOW=1`)
 
+**Execution Strategy Markers:**
+- `@pytest.mark.requires_gpu_isolation` - Requires OS-level process isolation to clear CUDA memory (use with `--isolate-heavy` or `CICD=1`)
+
 **Default behavior:**
 - `uv run pytest` skips slow tests (>5 min) but runs qualitative tests
 - Use `pytest -m "not qualitative"` for fast tests only (~2 min)
@@ -364,8 +422,10 @@ print(m.last_prompt())
 ## Additional Resources
 
 ### Documentation
+
+- **[Docs writing guide](docs/docs/guide/CONTRIBUTING.md)** - Conventions, PR checklist, and review process for documentation contributions
 - **[Tutorial](docs/tutorial.md)** - Comprehensive guide to Mellea concepts
-- **[API Documentation](https://mellea.ai/)** - Full API reference
+- **[API Documentation](https://docs.mellea.ai)** - Published documentation site
 - **[Test Markers Guide](test/MARKERS_GUIDE.md)** - Detailed pytest marker documentation
 - **[AGENTS.md](AGENTS.md)** - Guidelines for AI assistants working on Mellea internals
 - **[AGENTS_TEMPLATE.md](docs/AGENTS_TEMPLATE.md)** - Template for projects using Mellea

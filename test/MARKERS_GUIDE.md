@@ -48,6 +48,9 @@ pytest --ignore-api-key-check test/backends/test_openai.py
 # Ignore all checks at once (convenience flag)
 pytest --ignore-all-checks
 
+# Enable GPU process isolation (opt-in, slower but guarantees CUDA memory release)
+pytest --isolate-heavy test/backends/test_vllm.py test/backends/test_huggingface.py
+
 # Combine multiple overrides
 pytest --ignore-gpu-check --ignore-ram-check -m "huggingface"
 ```
@@ -123,7 +126,6 @@ Specify which backend the test uses:
 - **`@pytest.mark.vllm`**: Tests requiring vLLM backend
   - Local execution
   - Heavy resources (GPU required, 16-32GB RAM, 8GB+ VRAM)
-  - Requires `VLLM_USE_V1=0` environment variable
   - Example: `test/backends/test_vllm.py`
 
 - **`@pytest.mark.litellm`**: Tests requiring LiteLLM backend
@@ -157,6 +159,16 @@ Specify resource or authentication requirements:
   - Tests that load large datasets, run extensive evaluations, etc.
   - **Excluded by default** (configured in `pyproject.toml` addopts)
   - Use `pytest -m slow` or `pytest --co -q` to include these tests
+
+### Execution Strategy Markers
+
+- **`@pytest.mark.requires_gpu_isolation`**: Tests requiring OS-level process isolation
+  - Used for heavy GPU tests (vLLM, HuggingFace) that need CUDA memory fully released between modules
+  - Only activates when `--isolate-heavy` flag is used or `CICD=1` is set
+  - Runs each marked module in a separate subprocess to guarantee GPU memory release
+  - **Not a capability check** - this is an execution strategy, not a resource requirement
+  - Separate from `requires_gpu` (which checks if GPU exists)
+  - Example: `test/backends/test_vllm.py`, `test/backends/test_huggingface.py`
 
 ### Composite Markers
 
@@ -232,6 +244,7 @@ pytestmark = [
     pytest.mark.llm,
     pytest.mark.requires_gpu,
     pytest.mark.requires_heavy_ram,
+    pytest.mark.requires_gpu_isolation,  # Needs process isolation for GPU memory
 ]
 ```
 
@@ -310,11 +323,11 @@ jobs:
   unit-tests:
     # Fast unit tests, no LLM
     run: pytest -m "not llm"
-  
+
   ollama-tests:
     # Ollama infrastructure tests
     run: pytest -m "ollama and not qualitative"
-  
+
   quality-tests:
     # Optional: Run quality tests on schedule
     if: github.event_name == 'schedule'
@@ -350,6 +363,7 @@ pytestmark = [
     pytest.mark.llm,
     pytest.mark.requires_gpu,
     pytest.mark.requires_heavy_ram,
+    pytest.mark.requires_gpu_isolation,  # Add if needs GPU memory isolation
 ]
 
 @pytest.mark.qualitative

@@ -11,6 +11,7 @@ pytestmark = [
     pytest.mark.llm,
     pytest.mark.requires_gpu,
     pytest.mark.requires_heavy_ram,
+    pytest.mark.requires_gpu_isolation,  # Activate GPU memory isolation
     # Skip entire module in CI since all 8 tests are qualitative
     pytest.mark.skipif(
         int(os.environ.get("CICD", 0)) == 1,
@@ -134,6 +135,14 @@ async def test_generate_from_raw(session) -> None:
 @pytest.mark.qualitative
 async def test_generate_from_raw_with_format(session) -> None:
     prompts = ["what is 1+1?", "what is 2+2?", "what is 3+3?", "what is 4+4?"]
+
+    # The original prompts in this test case told the model to return a number, after
+    # which the constrained decoding below would prevent the model from producing
+    # a number. High-quality models will correctly output garbage in this case, and
+    # this garbage can include unbounded amounts of whitespace, causing this test case
+    # to fail randomly in the face of correct model operation.
+    # Tweak the prompts a bit to make the test pass.
+    prompts = [p + " Answer with a JSON record please." for p in prompts]
 
     class Answer(pydantic.BaseModel):
         name: str

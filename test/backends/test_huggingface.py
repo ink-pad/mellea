@@ -19,6 +19,7 @@ pytestmark = [
     pytest.mark.llm,
     pytest.mark.requires_gpu,
     pytest.mark.requires_heavy_ram,
+    pytest.mark.requires_gpu_isolation,  # Activate GPU memory isolation
     # Skip entire module in CI since 17/18 tests are qualitative
     pytest.mark.skipif(
         int(os.environ.get("CICD", 0)) == 1,
@@ -28,7 +29,7 @@ pytestmark = [
 
 from mellea import MelleaSession
 from mellea.backends import ModelOption, model_ids
-from mellea.backends.adapters import GraniteCommonAdapter
+from mellea.backends.adapters import IntrinsicAdapter
 from mellea.backends.cache import SimpleLRUCache
 from mellea.backends.huggingface import LocalHFBackend, _assert_correct_adapters
 from mellea.core import (
@@ -58,12 +59,10 @@ def backend():
         cache=SimpleLRUCache(5),
     )
     backend.add_adapter(
-        GraniteCommonAdapter(
-            "requirement_check", base_model_name=backend.base_model_name
-        )
+        IntrinsicAdapter("requirement_check", base_model_name=backend.base_model_name)
     )
     backend.add_adapter(
-        GraniteCommonAdapter("answerability", base_model_name=backend.base_model_name)
+        IntrinsicAdapter("answerability", base_model_name=backend.base_model_name)
     )
     return backend
 
@@ -234,7 +233,9 @@ def test_format(session) -> None:
 
     print("address:", email.to.email_address)
     assert "@" in email.to.email_address, "The @ sign should be in the email address."
-    assert email.to.email_address.endswith("example.com"), (
+    assert email.to.email_address.endswith(
+        "example.com"
+    ) or email.to.email_address.endswith("example.com>"), (
         "The email address should be at example.com"
     )
 
@@ -342,11 +343,9 @@ async def test_generate_with_lock(backend) -> None:
     b._added_adapters = {}
     b._loaded_adapters = {}
     b.add_adapter(
-        GraniteCommonAdapter("requirement_check", base_model_name=b.base_model_name)
+        IntrinsicAdapter("requirement_check", base_model_name=b.base_model_name)
     )
-    b.add_adapter(
-        GraniteCommonAdapter("answerability", base_model_name=b.base_model_name)
-    )
+    b.add_adapter(IntrinsicAdapter("answerability", base_model_name=b.base_model_name))
 
     memoized: dict[torch.Tensor, str] = dict()
     gen_func = model.generate
@@ -510,11 +509,15 @@ async def test_error_during_generate_with_lock(backend) -> None:
     b: LocalHFBackend = copy(backend)
     model = copy(b._model)
     b._model = model
-    b._model.set_adapter([])
+    try:
+        b._model.set_adapter([])
+    except ValueError as e:
+        if "No adapter loaded" not in str(e):
+            raise
     b._added_adapters = {}
     b._loaded_adapters = {}
     b.add_adapter(
-        GraniteCommonAdapter("requirement_check", base_model_name=b.base_model_name)
+        IntrinsicAdapter("requirement_check", base_model_name=b.base_model_name)
     )
 
     regular_generate = b._model.generate

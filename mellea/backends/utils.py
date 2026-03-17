@@ -1,9 +1,17 @@
-"""Utilities for Backends."""
+"""Shared utility functions used across formatter-based backend implementations.
+
+Provides ``to_chat``, which converts a ``Context`` and a ``Component`` action into
+the list of role/content dicts expected by ``apply_chat_template``; and
+``to_tool_calls``, which parses a raw model output string into validated
+``ModelToolCall`` objects. These helpers are consumed internally by all
+``FormatterBackend`` subclasses.
+"""
 
 from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
+from typing import Any
 
 from ..core import CBlock, Component, Context, FancyLogger, ModelToolCall
 from ..core.base import AbstractMelleaTool
@@ -16,15 +24,39 @@ from .tools import parse_tools, validate_tool_arguments
 Chat = dict[str, str]
 
 
+def get_value(obj: Any, key: str) -> Any:
+    """Get value from dict or object attribute.
+
+    Args:
+        obj: Dict or object
+        key: Key or attribute name
+
+    Returns:
+        Value if found, None otherwise
+    """
+    if isinstance(obj, dict):
+        return obj.get(key)
+    return getattr(obj, key, None)
+
+
 def to_chat(
     action: Component | CBlock,
     ctx: Context,
     formatter: ChatFormatter,
     system_prompt: str | None,
 ) -> list[Chat]:
-    """Converts a context and an action into a series of dicts to be passed to apply_chat_template .
+    """Converts a context and an action into a series of dicts to be passed to apply_chat_template.
 
     This function is used by local inference backends.
+
+    Args:
+        action: The next component or CBlock to generate output for.
+        ctx: The current conversation context.
+        formatter: The chat formatter used to convert context and action to messages.
+        system_prompt: Optional system prompt to prepend; overrides any system message in the context.
+
+    Returns:
+        List of role/content dicts suitable for ``apply_chat_template``.
     """
     assert ctx.is_chat_context
 
@@ -59,7 +91,15 @@ def to_chat(
 def to_tool_calls(
     tools: dict[str, AbstractMelleaTool], decoded_result: str
 ) -> dict[str, ModelToolCall] | None:
-    """Parse a tool call string."""
+    """Parse a tool call string.
+
+    Args:
+        tools: Mapping of tool name to the corresponding ``AbstractMelleaTool`` object.
+        decoded_result: Raw model output string that may contain tool call markup.
+
+    Returns:
+        Dict mapping tool name to validated ``ModelToolCall``, or ``None`` if no tool calls were found.
+    """
     model_tool_calls: dict[str, ModelToolCall] = dict()
     for tool_name, tool_args in parse_tools(decoded_result):
         func = tools.get(tool_name)

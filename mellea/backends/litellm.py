@@ -52,7 +52,23 @@ format: None = None  # typing this variable in order to shadow the global format
 
 
 class LiteLLMBackend(FormatterBackend):
-    """A generic LiteLLM compatible backend."""
+    """A generic LiteLLM compatible backend.
+
+    Args:
+        model_id (str): The LiteLLM model identifier string; typically
+            ``"<provider>/<model_creator>/<model_name>"``.
+        formatter (ChatFormatter | None): Formatter for rendering components.
+            Defaults to ``TemplateFormatter``.
+        base_url (str | None): Base URL for the LLM API endpoint; defaults to
+            the Ollama local endpoint.
+        model_options (dict | None): Default model options for generation requests.
+
+    Attributes:
+        to_mellea_model_opts_map (dict): Mapping from backend-specific option names to
+            Mellea ``ModelOption`` sentinel keys.
+        from_mellea_model_opts_map (dict): Mapping from Mellea ``ModelOption`` sentinel
+            keys to backend-specific option names.
+    """
 
     def __init__(
         self,
@@ -62,16 +78,7 @@ class LiteLLMBackend(FormatterBackend):
         base_url: str | None = "http://localhost:11434",
         model_options: dict | None = None,
     ):
-        """Initialize an OpenAI compatible backend using the [LiteLLM Python SDK](https://docs.litellm.ai/docs/#litellm-python-sdk).
-
-        Note: If getting `Unclosed client session`, set `export DISABLE_AIOHTTP_TRANSPORT=True` in your environment. See: https://github.com/BerriAI/litellm/issues/13251.
-
-        Args:
-            model_id : The LiteLLM model identifier; in most cases requires some combination of `<provider>/<model_creator>/<model_name>`. Make sure that all necessary credentials are in OS environment variables.
-            formatter: A custom formatter based on backend.If None, defaults to TemplateFormatter
-            base_url : Base url for LLM API. Defaults to None.
-            model_options : Generation options to pass to the LLM. Defaults to None.
-        """
+        """Initialize a LiteLLM-compatible backend for the given model ID and endpoint."""
         super().__init__(
             model_id=model_id,
             formatter=(
@@ -118,7 +125,7 @@ class LiteLLMBackend(FormatterBackend):
 
         self._past_event_loops: set[int] = set()
 
-    async def generate_from_context(
+    async def _generate_from_context(
         self,
         action: Component[C] | CBlock,
         ctx: Context,
@@ -127,7 +134,26 @@ class LiteLLMBackend(FormatterBackend):
         model_options: dict | None = None,
         tool_calls: bool = False,
     ) -> tuple[ModelOutputThunk[C], Context]:
-        """See `generate_from_chat_context`."""
+        """Generate a completion for ``action`` given ``ctx`` via the LiteLLM chat API.
+
+        Delegates to ``_generate_from_chat_context_standard``. Only chat contexts are
+        supported; raises ``NotImplementedError`` otherwise.
+
+        Args:
+            action (Component[C] | CBlock): The component or content block to generate
+                a completion for.
+            ctx (Context): The current generation context (must be a chat context).
+            format (type[BaseModelSubclass] | None): Optional Pydantic model class for
+                structured/constrained output decoding.
+            model_options (dict | None): Per-call model options that override the
+                backend's defaults.
+            tool_calls (bool): If ``True``, expose available tools to the model and
+                parse tool-call responses.
+
+        Returns:
+            tuple[ModelOutputThunk[C], Context]: A thunk holding the (lazy) model output
+                and an updated context that includes ``action`` and the new output.
+        """
         assert ctx.is_chat_context, NotImplementedError(
             "The Openai backend only supports chat-like contexts."
         )
@@ -297,6 +323,10 @@ class LiteLLMBackend(FormatterBackend):
                 },
             }
 
+        # Request usage information in streaming responses
+        if model_opts.get(ModelOption.STREAM, False):
+            extra_params["stream_options"] = {"include_usage": True}
+
         thinking = model_opts.get(ModelOption.THINKING, None)
         if type(thinking) is bool and thinking:
             # OpenAI uses strings for its reasoning levels.
@@ -326,6 +356,7 @@ class LiteLLMBackend(FormatterBackend):
         )
 
         output = ModelOutputThunk(None)
+        output._start = datetime.datetime.now()
         output._context = linearized_context
         output._action = action
         output._model_options = model_opts
@@ -362,9 +393,16 @@ class LiteLLMBackend(FormatterBackend):
         mot: ModelOutputThunk,
         chunk: litellm.ModelResponse | litellm.ModelResponseStream,  # type: ignore
     ):
-        """Called during generation to add information from a single ModelResponse or a chunk / ModelResponseStream to the ModelOutputThunk.
+        """Accumulate content and thinking tokens from a single LiteLLM response chunk.
 
-        For LiteLLM, tool call parsing is handled in the post processing step.
+        Called during generation for each ``ModelResponse`` (non-streaming) or
+        ``ModelResponseStream`` chunk (streaming). Tool call parsing is deferred to
+        ``post_processing``.
+
+        Args:
+            mot (ModelOutputThunk): The output thunk being populated.
+            chunk (litellm.ModelResponse | litellm.ModelResponseStream): A single
+                response object or streaming chunk from LiteLLM.
         """
         if mot._thinking is None:
             mot._thinking = ""
@@ -389,6 +427,9 @@ class LiteLLMBackend(FormatterBackend):
             if content_chunk is not None:
                 mot._underlying_value += content_chunk
 
+            # Store the full response (includes usage) as a dict
+            mot._meta["litellm_full_response"] = chunk.model_dump()
+            # Also store just the choice for backward compatibility
             mot._meta["litellm_chat_response"] = chunk.choices[0].model_dump()
 
         elif isinstance(chunk, litellm.ModelResponseStream):  # type: ignore
@@ -410,6 +451,10 @@ class LiteLLMBackend(FormatterBackend):
                 chunk.choices[0].model_dump()
             )
 
+            # Store usage information from the chunk if available (typically in the last chunk)
+            if hasattr(chunk, "usage") and chunk.usage is not None:
+                mot._meta["litellm_streaming_usage"] = chunk.usage.model_dump()
+
     async def post_processing(
         self,
         mot: ModelOutputThunk,
@@ -418,7 +463,21 @@ class LiteLLMBackend(FormatterBackend):
         thinking,
         _format,
     ):
-        """Called when generation is done."""
+        """Finalize the model output thunk after LiteLLM generation completes.
+
+        Reconstructs a merged chat response from streaming chunks if applicable,
+        extracts tool call requests, records token usage metrics, emits telemetry,
+        and attaches the generate log to the output thunk.
+
+        Args:
+            mot (ModelOutputThunk): The output thunk to finalize.
+            conversation (list[dict]): The chat conversation sent to the model,
+                used for logging.
+            tools (dict[str, AbstractMelleaTool]): Available tools, keyed by name.
+            thinking: The thinking/reasoning effort level passed to the model, or
+                ``None`` if reasoning mode was not enabled.
+            _format: The structured output format class used during generation, if any.
+        """
         # Reconstruct the chat_response from chunks if streamed.
         streamed_chunks = mot._meta.get("litellm_chat_response_streamed", None)
         if streamed_chunks is not None:
@@ -468,6 +527,33 @@ class LiteLLMBackend(FormatterBackend):
         generate_log.result = mot
         mot._generate_log = generate_log
 
+        # Extract token usage from full response dict or streaming usage
+        full_response = mot._meta.get("litellm_full_response")
+        usage = full_response.get("usage") if isinstance(full_response, dict) else None
+
+        # For streaming responses, usage is stored separately
+        if usage is None:
+            usage = mot._meta.get("litellm_streaming_usage")
+
+        # Record metrics if enabled
+        from ..telemetry.metrics import is_metrics_enabled
+
+        if is_metrics_enabled() and usage:
+            from ..telemetry.backend_instrumentation import (
+                get_model_id_str,
+                get_system_name,
+            )
+            from ..telemetry.metrics import record_token_usage_metrics
+            from .utils import get_value
+
+            record_token_usage_metrics(
+                input_tokens=get_value(usage, "prompt_tokens"),
+                output_tokens=get_value(usage, "completion_tokens"),
+                model=get_model_id_str(self),
+                backend=self.__class__.__name__,
+                system=get_system_name(self),
+            )
+
         # Record telemetry now that response is available
         span = mot._meta.get("_telemetry_span")
         if span is not None:
@@ -480,11 +566,6 @@ class LiteLLMBackend(FormatterBackend):
             response = mot._meta.get("litellm_chat_response")
             if response:
                 # LiteLLM responses have usage information
-                usage = (
-                    response.get("usage")
-                    if isinstance(response, dict)
-                    else getattr(response, "usage", None)
-                )
                 if usage:
                     record_token_usage(span, usage)
                 record_response_metadata(span, response)
@@ -544,7 +625,22 @@ class LiteLLMBackend(FormatterBackend):
         model_options: dict | None = None,
         tool_calls: bool = False,
     ) -> list[ModelOutputThunk]:
-        """Generate using the completions api. Gives the input provided to the model without templating."""
+        """Generate completions for multiple actions without chat templating via LiteLLM.
+
+        Passes formatted prompt strings directly to LiteLLM's text completion endpoint.
+        Tool calling is not supported on this endpoint.
+
+        Args:
+            actions (Sequence[Component[C] | CBlock]): Actions to generate completions for.
+            ctx (Context): The current generation context.
+            format (type[BaseModelSubclass] | None): Optional Pydantic model for
+                structured output; passed as ``guided_json`` in the request body.
+            model_options (dict | None): Per-call model options.
+            tool_calls (bool): Ignored; tool calling is not supported on this endpoint.
+
+        Returns:
+            list[ModelOutputThunk]: A list of model output thunks, one per action.
+        """
         with instrument_generate_from_raw(
             backend=self, num_actions=len(actions), format=format, tool_calls=tool_calls
         ):
