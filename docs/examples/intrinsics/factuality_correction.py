@@ -32,14 +32,5 @@ context = (
     .add(Message("assistant", response_text))
 )
 
-# Create the backend.
-backend = LocalHFBackend(model_id="ibm-granite/granite-4.0-micro")
-context = (
-    ChatContext()
-    .add(document)
-    .add(Message("user", user_text))
-    .add(Message("assistant", response_text))
-)
-
 result = guardian.factuality_correction(context, backend)
 print(f"Result of factuality correction: {result}")  # corrected response string
