@@ -119,6 +119,7 @@ Keys can be passed directly to :func:`guardian_check` as the ``criteria``
 parameter.
 """
 
+
 def guardian_check(
     context: ChatContext,
     backend: AdapterMixin,
