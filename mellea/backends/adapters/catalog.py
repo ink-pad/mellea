@@ -88,11 +88,15 @@ _INTRINSICS_CATALOG_ENTRIES = [
     # Guardian Intrinsics
     ############################################
     IntriniscsCatalogEntry(
-        name="policy_guardrails", 
-        repo_id=_GUARDIAN_REPO, 
-        adapter_types=(AdapterType.LORA,)
+        name="policy_guardrails",
+        repo_id=_GUARDIAN_REPO,
+        adapter_types=(AdapterType.LORA,),
     ),
-
+    IntriniscsCatalogEntry(
+        name="guardian-core",
+        repo_id=_GUARDIAN_REPO,
+        adapter_types=(AdapterType.LORA,),
+    ),
 ]
 
 _INTRINSICS_CATALOG = {e.name: e for e in _INTRINSICS_CATALOG_ENTRIES}

@@ -40,6 +40,9 @@ Detect if text adheres to provided requirements.
 ### policy_guardrails.py
 Checks if a scenario is compliant/non-compliant/ambiguous with respect to a given policy,
 
+### guardian_core.py
+Uses the guardian-core LoRA adapter for safety risk detection, including prompt-level harm, response-level social bias, RAG groundedness, and custom criteria.
+
 ## Concepts Demonstrated
 
 - **Intrinsic Functions**: Specialized model capabilities beyond text generation
@@ -82,6 +85,7 @@ out, new_ctx = mfuncs.act(
 - **query_rewrite**: Improve query formulation
 - **uncertainty**: Estimate certainty about answering a question
 - **policy_guardrails**: Determine if scenario complies with policy
+- **guardian-core**: Safety risk detection (harm, bias, groundedness, custom criteria)
 
 ## Related Documentation
 
